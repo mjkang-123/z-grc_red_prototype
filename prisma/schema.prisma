@@ -1,0 +1,106 @@
+// Z-GRC — EN 18031 self-assessment data model
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Project {
+  id                 String   @id @default(cuid())
+  name               String
+  manufacturer       String
+  contactName        String?
+  contactEmail       String?
+  productType        String?
+  productDescription String?
+
+  // Applicability results computed from screening
+  applicable1 Boolean @default(false) // EN 18031-1
+  applicable2 Boolean @default(false) // EN 18031-2
+  applicable3 Boolean @default(false) // EN 18031-3
+
+  // Mechanism candidates as JSON array of codes, e.g. ["ACM","AUM","SUM",...]
+  mechanismCandidates String @default("[]")
+
+  screeningComplete Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  screeningAnswers ScreeningAnswer[]
+  assets           Asset[]
+  dtAnswers        DTAnswer[]
+  dtEvidences      DTEvidence[]
+}
+
+model ScreeningAnswer {
+  id         String   @id @default(cuid())
+  projectId  String
+  questionId String // e.g., "A1", "B3"
+  answer     String // "yes" | "no"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, questionId])
+}
+
+model Asset {
+  id          String  @id @default(cuid())
+  projectId   String
+  kind        String // "network_interface" | "network_service" | "data_flow" | "security_asset" | "function"
+  name        String
+  description String?
+  metadata    String  @default("{}") // JSON
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dtAnswers   DTAnswer[]
+  dtEvidences DTEvidence[]
+}
+
+model DTAnswer {
+  id            String  @id @default(cuid())
+  projectId     String
+  assetId       String? // null for global-scope (non-per-asset) requirements
+  mechanismCode String // "ACM", "AUM", "SUM", ...
+  requirementId String // "ACM-1", "AUM-1", ...
+  nodeId        String // "DN-1", "DN-2", ...
+  answer        String // "yes" | "no"
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, assetId, requirementId, nodeId])
+}
+
+// Structured required-information evidence per EN 18031 spec.
+// Each requirement may declare an evidenceFields schema; users fill the
+// values which are keyed by (project, asset, requirement, fieldId).
+model DTEvidence {
+  id            String  @id @default(cuid())
+  projectId     String
+  assetId       String? // null for requirement-level (non per-asset) fields
+  requirementId String // e.g. "P1.ACM-1"
+  fieldId       String // e.g. "E.Info.ACM-1.SecurityAsset.Access"
+  value         String  @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, assetId, requirementId, fieldId])
+}
