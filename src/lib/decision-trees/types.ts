@@ -5,6 +5,26 @@ import type { StandardId } from "../mechanisms";
 
 export type DTOutcome = "pass" | "fail" | "not_applicable";
 
+// Technical assessment types performed by a certification consultant after
+// the Required Information has been captured. Each requirement declares which
+// of these apply via the assessments-map.
+export type AssessmentType =
+  | "completeness" // 기능 완전성 평가 — does the mechanism implement the required functionality?
+  | "sufficiency" // 기능 충분성 평가 — is the implementation sufficient against relevant threats?
+  | "conceptual_completeness"; // 개념적 완전성 평가 — conceptual-level review only (e.g. CCK-2)
+
+export const ASSESSMENT_LABEL_KO: Record<AssessmentType, string> = {
+  completeness: "기능 완전성 평가",
+  sufficiency: "기능 충분성 평가",
+  conceptual_completeness: "개념적 완전성 평가",
+};
+
+export const ASSESSMENT_LABEL_EN: Record<AssessmentType, string> = {
+  completeness: "Functional Completeness Assessment",
+  sufficiency: "Functional Sufficiency Assessment",
+  conceptual_completeness: "Conceptual Completeness Assessment",
+};
+
 // Optional prompt shown next to the user's evidence field when they follow this
 // branch. If omitted, a default prompt derived from the branch's outcome (or
 // a generic one for goto branches) is used.

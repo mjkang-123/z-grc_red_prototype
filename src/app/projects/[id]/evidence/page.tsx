@@ -36,6 +36,7 @@ import {
 } from "@/lib/decision-trees";
 import { StructuredEvidenceForm } from "./structured-evidence-form";
 import { EvidenceForm } from "./evidence-form";
+import { LockedBanner } from "../locked-banner";
 
 export default async function EvidencePage({
   params,
@@ -304,6 +305,12 @@ export default async function EvidencePage({
         </p>
       </div>
 
+      <LockedBanner
+        projectId={project.id}
+        finalizedAt={project.finalizedAt}
+        finalizedBy={project.finalizedBy}
+      />
+
       {applicableStandards.length > 1 && (
         <div className="flex flex-wrap gap-1 border-b">
           {applicableStandards.map((s) => {
@@ -409,6 +416,7 @@ export default async function EvidencePage({
                         requirementId={block.reqId}
                         fields={it.applicableFields}
                         pathSummary={it.pathSummary}
+                        readOnly={project.finalizedAt !== null}
                       />
                     ) : (
                       <EvidenceForm
@@ -417,6 +425,7 @@ export default async function EvidencePage({
                         mechanismCode={block.reqMechanism}
                         requirementId={block.reqId}
                         steps={it.pathSteps}
+                        readOnly={project.finalizedAt !== null}
                       />
                     )}
                   </div>

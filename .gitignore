@@ -45,3 +45,6 @@ next-env.d.ts
 # local SQLite dev DB
 *.db
 *.db-journal
+
+# uploaded project attachments
+/uploads

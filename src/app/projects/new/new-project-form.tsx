@@ -1,7 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Paperclip, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,8 +27,22 @@ const PRODUCT_TYPE_SUGGESTIONS = [
   "Other / 기타",
 ];
 
+const ATTACHMENT_ACCEPT =
+  ".pdf,.png,.jpg,.jpeg,.svg,.docx,.xlsx,.doc,.xls,application/pdf,image/png,image/jpeg,image/svg+xml,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.ms-excel";
+
 export function NewProjectForm() {
   const [pending, startTransition] = useTransition();
+  const [slotIds, setSlotIds] = useState<number[]>([0]);
+  const nextIdRef = useRef(1);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function addSlot() {
+    setSlotIds((prev) => [...prev, nextIdRef.current++]);
+  }
+
+  function removeSlot(id: number) {
+    setSlotIds((prev) => (prev.length > 1 ? prev.filter((i) => i !== id) : prev));
+  }
 
   async function onSubmit(formData: FormData) {
     const name = String(formData.get("name") ?? "").trim();
@@ -43,19 +58,20 @@ export function NewProjectForm() {
     }
 
     startTransition(async () => {
-      await createProject({
-        name,
-        manufacturer,
-        contactName: String(formData.get("contactName") ?? ""),
-        contactEmail: String(formData.get("contactEmail") ?? ""),
-        productType: String(formData.get("productType") ?? ""),
-        productDescription: String(formData.get("productDescription") ?? ""),
-      });
+      try {
+        await createProject(formData);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "저장 실패";
+        // Ignore NEXT_REDIRECT which is how server actions redirect
+        if (msg.includes("NEXT_REDIRECT")) return;
+        toast.error(msg);
+        console.error(err);
+      }
     });
   }
 
   return (
-    <form action={onSubmit}>
+    <form ref={formRef} action={onSubmit}>
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">
@@ -130,14 +146,102 @@ export function NewProjectForm() {
               placeholder="제품의 기능·통신 방식·사용 환경 등 간단한 설명 / Short description of the product's functions, communication, and operating environment."
             />
           </Field>
+
+          <div className="space-y-3 border-t pt-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">
+                  첨부 파일 / Attachments
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    (선택 사항)
+                  </span>
+                </Label>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  제품 설명서·아키텍처·사양서 등 (PDF, 이미지, DOCX, XLSX · 최대 50MB)
+                </p>
+              </div>
+            </div>
+
+            {slotIds.map((id, idx) => (
+              <AttachmentSlot
+                key={id}
+                index={idx + 1}
+                disabled={pending}
+                onRemove={
+                  slotIds.length > 1 ? () => removeSlot(id) : undefined
+                }
+              />
+            ))}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addSlot}
+              disabled={pending}
+              className="w-full border-dashed"
+            >
+              <Plus className="mr-1 size-3.5" />
+              파일 추가
+            </Button>
+          </div>
         </CardContent>
         <CardFooter className="justify-end gap-2">
           <Button type="submit" disabled={pending}>
-            {pending ? "저장 중… / Saving…" : "저장 후 스크리닝 / Save & Start Screening"}
+            {pending
+              ? "저장 중… / Saving…"
+              : "저장 후 스크리닝 / Save & Start Screening"}
           </Button>
         </CardFooter>
       </Card>
     </form>
+  );
+}
+
+function AttachmentSlot({
+  index,
+  disabled,
+  onRemove,
+}: {
+  index: number;
+  disabled?: boolean;
+  onRemove?: () => void;
+}) {
+  return (
+    <div className="relative rounded-md border bg-muted/20 p-3 pr-9">
+      <div className="mb-2 flex items-center gap-2">
+        <Paperclip className="size-3.5 text-muted-foreground" />
+        <span className="text-[11px] font-medium text-muted-foreground">
+          파일 #{index}
+        </span>
+      </div>
+      <div className="space-y-2">
+        <Input
+          type="file"
+          name="attachments"
+          accept={ATTACHMENT_ACCEPT}
+          disabled={disabled}
+          className="cursor-pointer text-xs file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-[11px]"
+        />
+        <Input
+          name="descriptions"
+          disabled={disabled}
+          placeholder="설명 (예: v1.2 사용자 매뉴얼, 시스템 아키텍처 다이어그램 등)"
+          className="text-xs"
+        />
+      </div>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={disabled}
+          className="absolute right-2 top-2 rounded p-1 text-muted-foreground hover:bg-background hover:text-destructive"
+          aria-label="파일 슬롯 제거"
+        >
+          <X className="size-3.5" />
+        </button>
+      )}
+    </div>
   );
 }
 

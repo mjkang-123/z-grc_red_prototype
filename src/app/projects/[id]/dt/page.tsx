@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { MECHANISMS, STANDARDS, type StandardId } from "@/lib/mechanisms";
+import { LockedBanner } from "../locked-banner";
 import {
   DT_REQUIREMENTS,
   evaluateRequirementApplicability,
@@ -298,6 +299,12 @@ export default async function DTOverviewPage({
           {project.manufacturer}
         </p>
       </div>
+
+      <LockedBanner
+        projectId={project.id}
+        finalizedAt={project.finalizedAt}
+        finalizedBy={project.finalizedBy}
+      />
 
       {/* Standard tabs — shown only when 2+ standards apply */}
       {applicableStandards.length > 1 && (

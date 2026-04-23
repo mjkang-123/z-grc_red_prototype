@@ -9,6 +9,18 @@ datasource db {
   provider = "sqlite"
 }
 
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         String // "customer" | "consultant"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  projects Project[]
+}
+
 model Project {
   id                 String   @id @default(cuid())
   name               String
@@ -17,6 +29,11 @@ model Project {
   contactEmail       String?
   productType        String?
   productDescription String?
+
+  // Owner (customer who created it). Null for legacy projects — visible to
+  // consultants but not to any customer.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Applicability results computed from screening
   applicable1 Boolean @default(false) // EN 18031-1
@@ -28,6 +45,11 @@ model Project {
 
   screeningComplete Boolean @default(false)
 
+  // Finalization — once finalized, mutations are locked. Set back to null to unlock.
+  finalizedAt   DateTime?
+  finalizedBy   String?
+  finalizedNote String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -35,6 +57,8 @@ model Project {
   assets           Asset[]
   dtAnswers        DTAnswer[]
   dtEvidences      DTEvidence[]
+  dtAssessments    DTAssessment[]
+  attachments      ProjectAttachment[]
 }
 
 model ScreeningAnswer {
@@ -61,9 +85,10 @@ model Asset {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  dtAnswers   DTAnswer[]
-  dtEvidences DTEvidence[]
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dtAnswers     DTAnswer[]
+  dtEvidences   DTEvidence[]
+  dtAssessments DTAssessment[]
 }
 
 model DTAnswer {
@@ -103,4 +128,50 @@ model DTEvidence {
   asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, assetId, requirementId, fieldId])
+}
+
+// Technical assessment recorded by a certification consultant per requirement
+// (and per asset iteration). Each record captures one type of assessment for
+// one (project, asset, requirement) tuple — "completeness", "sufficiency",
+// or "conceptual_completeness".
+model DTAssessment {
+  id             String  @id @default(cuid())
+  projectId      String
+  assetId        String? // null for global-scope (non per-asset) requirements
+  requirementId  String // e.g. "P1.ACM-1"
+  assessmentType String // "completeness" | "sufficiency" | "conceptual_completeness"
+  testMethod     String  @default("")
+  testResult     String  @default("")
+  verdict        String? // "pass" | "fail" | "not_applicable"
+
+  // Optional evidence attachment (one file per assessment for now).
+  attachmentFilename   String?
+  attachmentStoredPath String?
+  attachmentMimeType   String?
+  attachmentSize       Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  asset   Asset?  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, assetId, requirementId, assessmentType])
+}
+
+// Uploaded product documentation — manuals, architecture diagrams, specifications,
+// certificates, etc. Files are stored on local disk under uploads/{projectId}/…,
+// with metadata recorded here.
+model ProjectAttachment {
+  id          String @id @default(cuid())
+  projectId   String
+  filename    String // original filename (as submitted by user)
+  storedPath  String // relative path from uploads/ (e.g. "{projectId}/{uuid}-manual.pdf")
+  mimeType    String
+  size        Int
+  description String @default("")
+
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

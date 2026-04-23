@@ -38,10 +38,12 @@ export function ScreeningForm({
   projectId,
   questions,
   initialAnswers,
+  readOnly = false,
 }: {
   projectId: string;
   questions: ScreeningQuestion[];
   initialAnswers: ScreeningAnswerMap;
+  readOnly?: boolean;
 }) {
   const [answers, setAnswers] = useState<ScreeningAnswerMap>(initialAnswers);
   const [pending, startTransition] = useTransition();
@@ -129,7 +131,7 @@ export function ScreeningForm({
         <Button
           size="lg"
           onClick={onSubmit}
-          disabled={pending || answeredCount < total}
+          disabled={pending || answeredCount < total || readOnly}
         >
           {pending
             ? "저장 중… / Saving…"

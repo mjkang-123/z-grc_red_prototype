@@ -128,3 +128,29 @@
     @apply font-sans;
   }
 }
+
+/* Print styles — used by the final report */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm 12mm;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  /* Hide the project sidebar when printing */
+  aside {
+    display: none !important;
+  }
+  /* Avoid breaking cards across pages where possible */
+  .break-before-page {
+    break-before: page;
+  }
+  /* Ensure content uses full width */
+  main,
+  main > div {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}

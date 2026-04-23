@@ -17,6 +17,8 @@ import {
 } from "@/lib/asset-kinds";
 import type { StandardId } from "@/lib/mechanisms";
 import { AssetSection } from "./asset-section";
+import { CSVImportDialog } from "./csv-import-dialog";
+import { LockedBanner } from "../locked-banner";
 
 export default async function AssetsPage({
   params,
@@ -64,6 +66,19 @@ export default async function AssetsPage({
           {" · "}
           {project.manufacturer}
         </p>
+      </div>
+
+      <LockedBanner
+        projectId={project.id}
+        finalizedAt={project.finalizedAt}
+        finalizedBy={project.finalizedBy}
+      />
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <CSVImportDialog
+          projectId={project.id}
+          disabled={project.finalizedAt !== null}
+        />
       </div>
 
       <Card className="border-accent bg-accent/30">

@@ -13,6 +13,9 @@ import {
   CheckCircle2,
   Circle,
   FileText,
+  Microscope,
+  Paperclip,
+  FileBarChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,9 +28,18 @@ type Step = {
   indent?: boolean;
   // Which status keys, if any, mark this step complete.
   completeWhen?: "screeningComplete" | "hasAssets" | "hasMechanisms" | "hasDTAnswers";
+  // If true, only visible to consultant role.
+  consultantOnly?: boolean;
 };
 
 const STEPS: Step[] = [
+  {
+    id: "attachments",
+    label_ko: "첨부 파일",
+    label_en: "Attachments",
+    path: "/attachments",
+    icon: Paperclip,
+  },
   {
     id: "screening",
     label_ko: "스크리닝",
@@ -90,6 +102,21 @@ const STEPS: Step[] = [
     path: "/evidence",
     icon: FileText,
   },
+  {
+    id: "assessment",
+    label_ko: "기능 평가",
+    label_en: "Assessment",
+    path: "/assessment",
+    icon: Microscope,
+    consultantOnly: true,
+  },
+  {
+    id: "report",
+    label_ko: "최종 리포트",
+    label_en: "Final Report",
+    path: "/report",
+    icon: FileBarChart,
+  },
 ];
 
 export type SidebarProject = {
@@ -102,9 +129,18 @@ export type SidebarProject = {
   hasDTAnswers: boolean;
 };
 
-export function ProjectSidebar({ project }: { project: SidebarProject }) {
+export function ProjectSidebar({
+  project,
+  role,
+}: {
+  project: SidebarProject;
+  role: "customer" | "consultant";
+}) {
   const pathname = usePathname();
   const basePath = `/projects/${project.id}`;
+  const visibleSteps = STEPS.filter(
+    (s) => !s.consultantOnly || role === "consultant",
+  );
 
   return (
     <aside className="hidden lg:sticky lg:top-4 lg:block lg:h-[calc(100vh-6rem)] lg:w-56 lg:shrink-0">
@@ -130,7 +166,7 @@ export function ProjectSidebar({ project }: { project: SidebarProject }) {
         </div>
 
         <nav className="space-y-0.5">
-          {STEPS.map((step) => {
+          {visibleSteps.map((step) => {
             const fullPath = basePath + step.path;
             // Active: exact match OR any deeper path under this step, but the
             // sub-review paths should not also highlight their parent.

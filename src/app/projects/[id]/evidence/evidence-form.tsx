@@ -25,12 +25,14 @@ export function EvidenceForm({
   mechanismCode,
   requirementId,
   steps,
+  readOnly = false,
 }: {
   projectId: string;
   assetId: string | null;
   mechanismCode: string;
   requirementId: string;
   steps: Step[];
+  readOnly?: boolean;
 }) {
   const [notes, setNotes] = useState<Record<string, string>>(() =>
     Object.fromEntries(steps.map((s) => [s.nodeId, s.notes])),
@@ -121,17 +123,20 @@ export function EvidenceForm({
               rows={2}
               className="flex-1 text-xs"
               placeholder="내용을 입력하면 포커스가 벗어날 때 자동 저장됩니다."
+              disabled={readOnly || savingNode === step.nodeId}
             />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onSave(step.nodeId)}
-              disabled={savingNode === step.nodeId}
-              className="shrink-0 text-[11px]"
-            >
-              <Save className="mr-1 size-3" />
-              {savingNode === step.nodeId ? "저장 중…" : "저장"}
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onSave(step.nodeId)}
+                disabled={savingNode === step.nodeId}
+                className="shrink-0 text-[11px]"
+              >
+                <Save className="mr-1 size-3" />
+                {savingNode === step.nodeId ? "저장 중…" : "저장"}
+              </Button>
+            )}
           </div>
         </div>
       ))}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Check, CircleDashed, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { saveDTEvidence } from "@/app/actions";
 import type { EvidenceField } from "@/lib/decision-trees";
 
 type FieldWithValue = { field: EvidenceField; value: string };
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 export function StructuredEvidenceForm({
   projectId,
@@ -17,25 +18,31 @@ export function StructuredEvidenceForm({
   requirementId,
   fields,
   pathSummary,
+  readOnly = false,
 }: {
   projectId: string;
   assetId: string | null;
   requirementId: string;
   fields: FieldWithValue[];
   pathSummary?: string;
+  readOnly?: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.field.id, f.value])),
   );
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({});
   const [, startTransition] = useTransition();
+
+  function setFieldState(fieldId: string, state: SaveState) {
+    setSaveStates((prev) => ({ ...prev, [fieldId]: state }));
+  }
 
   function onChange(fieldId: string, value: string) {
     setValues((prev) => ({ ...prev, [fieldId]: value }));
   }
 
   function onSave(fieldId: string) {
-    setSavingId(fieldId);
+    setFieldState(fieldId, "saving");
     startTransition(async () => {
       try {
         await saveDTEvidence({
@@ -45,11 +52,12 @@ export function StructuredEvidenceForm({
           fieldId,
           value: values[fieldId] ?? "",
         });
+        setFieldState(fieldId, "saved");
+        setTimeout(() => setFieldState(fieldId, "idle"), 1600);
       } catch (err) {
         toast.error("저장 실패");
         console.error(err);
-      } finally {
-        setSavingId(null);
+        setFieldState(fieldId, "error");
       }
     });
   }
@@ -82,6 +90,7 @@ export function StructuredEvidenceForm({
           )}
           {groupFields.map(({ field, value: initialValue }) => {
             const current = values[field.id] ?? initialValue ?? "";
+            const state = saveStates[field.id] ?? "idle";
             return (
               <div
                 key={field.id}
@@ -91,9 +100,12 @@ export function StructuredEvidenceForm({
                   <code className="rounded bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                     {field.id}
                   </code>
-                  {field.required && (
-                    <span className="text-[10px] text-destructive">필수</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <SaveIndicator state={state} />
+                    {field.required && (
+                      <span className="text-[10px] text-destructive">필수</span>
+                    )}
+                  </div>
                 </div>
                 <p className="mb-1.5 text-xs text-foreground">
                   {field.prompt_ko}
@@ -117,6 +129,7 @@ export function StructuredEvidenceForm({
                       rows={3}
                       className="flex-1 text-xs"
                       placeholder="내용 입력 후 포커스가 벗어나면 자동 저장됩니다."
+                      disabled={readOnly || state === "saving"}
                     />
                   ) : (
                     <Input
@@ -124,18 +137,21 @@ export function StructuredEvidenceForm({
                       onChange={(e) => onChange(field.id, e.target.value)}
                       onBlur={() => onSave(field.id)}
                       className="flex-1 text-xs"
+                      disabled={readOnly || state === "saving"}
                     />
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onSave(field.id)}
-                    disabled={savingId === field.id}
-                    className="shrink-0 text-[11px]"
-                  >
-                    <Save className="mr-1 size-3" />
-                    {savingId === field.id ? "저장…" : "저장"}
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onSave(field.id)}
+                      disabled={state === "saving"}
+                      className="shrink-0 text-[11px]"
+                    >
+                      <Save className="mr-1 size-3" />
+                      {state === "saving" ? "저장…" : "저장"}
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -143,5 +159,28 @@ export function StructuredEvidenceForm({
         </div>
       ))}
     </div>
+  );
+}
+
+function SaveIndicator({ state }: { state: SaveState }) {
+  if (state === "idle") return null;
+  if (state === "saving")
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+        <CircleDashed className="size-2.5 animate-pulse" />
+        저장 중
+      </span>
+    );
+  if (state === "saved")
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-400">
+        <Check className="size-2.5" />
+        저장됨
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-destructive">
+      저장 실패
+    </span>
   );
 }
